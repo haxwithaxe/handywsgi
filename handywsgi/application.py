@@ -1,8 +1,7 @@
 
-
 from genshi.template import TemplateLoader
 
-from . import status
+from . import status, HTTP_REQUEST_METHODS
 
 
 class Application:
@@ -10,13 +9,18 @@ class Application:
 
     def __init__(self, config):
         self.config = config
-        self.template_loader = TemplateLoader(self.config.template_path, auto_reload=True)
+        self.template_loader = TemplateLoader(
+                self.config.template_path,
+                auto_reload=True
+                )
         self.template_extension = config.template_extension or '.html'
+        self.context = None
+        self.content = None
 
     def __call__(self, context):
         self.context = context
         method = self.context.request.query.method
-        if method in ('GET', 'POST', 'PUT', 'HEAD', 'DELETE') and hasattr(self, method):
+        if method in HTTP_REQUEST_METHODS and hasattr(self, method):
             content = getattr(self, method)(self.context)
             if content:
                 self.content = content
@@ -26,13 +30,20 @@ class Application:
 
     def format(self, template_name, **data):
         """ Render a template with data and return it. """
-        content_template = self.template_loader.load(template_name+self.template_extension)
-        content = content_template.generate(**data).render('html', doctype='html')
+        content_template = self.template_loader.load(
+                template_name+self.template_extension
+                )
+        content = content_template.generate(**data).render(
+                'html',
+                doctype='html'
+                )
         return content
 
     def render(self, template_name):
         """ Render content and send it immediately. """
-        page_template = self.template_loader.load(template_name+self.template_extension)
+        page_template = self.template_loader.load(
+                template_name+self.template_extension
+                )
         page = page_template.generate(app=self).render('html', doctype='html')
         self.context.response.output.write(page)
 

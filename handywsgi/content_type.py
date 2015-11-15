@@ -1,37 +1,11 @@
 
-""" HTTP Content-Type header tools. """
+""" HTTP Content-Type header tools.
+
+For details on MIME types see: http://www.w3.org/Protocols/rfc1341/4_Content-Type.html
+
+"""
 
 from handywsgi import headers
-
-'''
-excerpt from: http://www.w3.org/Protocols/rfc1341/4_Content-Type.html
-
-    Content-Type := type "/" subtype *[";" parameter] 
-
-    type :=          "application"     / "audio" 
-              / "image"           / "message" 
-              / "multipart"  / "text" 
-              / "video"           / x-token 
-
-    x-token := <The two characters "X-" followed, with no 
-               intervening white space, by any token> 
-
-    subtype := token 
-
-    parameter := attribute "=" value 
-
-    attribute := token 
-
-    value := token / quoted-string 
-
-    token := 1*<any CHAR except SPACE, CTLs, or tspecials> 
-
-    tspecials :=  "(" / ")" / "<" / ">" / "@"  ; Must be in 
-               /  "," / ";" / ":" / "\" / <">  ; quoted-string, 
-               /  "/" / "[" / "]" / "?" / "."  ; to use within 
-               /  "="                        ; parameter values
-
-'''
 
 
 # Common charater sets i deem worth having variables for.
@@ -164,6 +138,14 @@ OCTET_STREAM = 'octet-stream'
 
 
 def make_content_type(major, minor, encoding=None):
+    """ Create a Content-Type Header.
+
+    Args:
+        major (str): The "type" part of the "type/subtype" pair.
+        minor (str): The "subtype" part of the "type/subtype" pair.
+        encoding (str, optional): The optional "charset" value.
+
+    """
     mime = '{}/{}'.format(major, minor)
     if encoding:
         charset = ';charset={}'.format(encoding)

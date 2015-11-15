@@ -1,19 +1,15 @@
 
-import cgi
 import os
-import pprint
-import urllib
-from wsgiref.simple_server import make_server
 
 from .context import Context
-from . import content_type, status
+from . import status
 
 
 class Adapter:
     """ A WSGI to app adapter.
 
     Attributes:
-        storage (dict): 
+        storage (dict):
 
     """
 
@@ -23,9 +19,12 @@ class Adapter:
         self.storage = {}
 
     def _index(self, context):
+        """ Creates an index page based on apps in the ``Adapter`` instance. """
         page = ['<head><title>HandyWSGI</title></head><h1>Index</h1>']
         for path in [x for x in self._apps if x]:
-            page.append('<div><a href="/{path}">{path}</a></div>'.format(path=path))
+            page.append('<div><a href="/{path}">{path}</a></div>'.format(
+                    path=path
+                    ))
         context.response.output.write(''.join(page))
 
     def __call__(self, environ, start_response):
@@ -39,7 +38,10 @@ class Adapter:
                 context.response.status = status.NotFound(uri_path or '/')
         app = self._apps.get(uri_path, self._index)
         self._run_app(app, context)
-        start_response(context.response.status.status, context.response.headers.to_list())
+        start_response(
+                context.response.status.status,
+                context.response.headers.items()
+                )
         return [context.response.output.read_bytes()]
 
     def _run_app(self, app, context):

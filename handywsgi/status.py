@@ -1,12 +1,25 @@
 """ HTTP Status headers """
 
+
+import urllib
+
+from . import HTTP_REQUEST_METHODS
+
 class HTTPStatus(Exception):
+    """ HTTP Status code base class.
+
+    Attributes:
+        status (str): The full HTTP Status code string.
+        message (str): The message to display in the stacktrace
+        headers (list): A list of header.Header to add to the response.
+
+    """
 
     status = None
     message = None
     headers = []
 
-        
+
 class OK(HTTPStatus):
 
     status = '200 OK'
@@ -18,68 +31,22 @@ class Created(HTTPStatus):
 
 
 class Accepted(HTTPStatus):
-    
+
     status = '202 Accepted'
 
 
 class HTTPError(HTTPStatus):
+    """ HTTP Error stats code base class. """
 
     def __init__(self, message=None):
-        super(HTTPError, self).__init__(self, message)
+        super().__init__(message)
         self.message = message
 
-
-class HTTPRedirect(HTTPError):
-    """Abstract redirect.
-    
-    Args:
-        url (str):
-        absolute (bool):
-    
-    Note:
-        `url` is joined with the base URL so that things like `redirect("about") will work properly.
-
-    """
-
-    status = None
-
-    def __init__(self, path, url):
-        new_path = urlparse.urljoin(path, url)
-        self.headers = {
-            'Content-Type': 'text/html',
-            'Location': new_path
-        }
-        HTTPError.__init__(self)
-
-
-class Redirect(HTTPRedirect):
-    """A `301 Moved Permanently` redirect."""
-
-    status = '301 Moved Permanently'
-
-
-class Found(Redirect):
-    """A `302 Found` redirect."""
-
-    status = '302 Found'
-
-
-class SeeOther(Redirect):
-    """A `303 See Other` redirect."""
-
-    status = '303 See Other'
-    
 
 class NotModified(HTTPError):
     """A `304 Not Modified` status."""
 
     status = '304 Not Modified'
-
-
-class TempRedirect(Redirect):
-    """A `307 Temporary Redirect` redirect."""
-
-    status = '307 Temporary Redirect'
 
 
 class BadRequest(HTTPError):
@@ -110,21 +77,22 @@ class NotFound(HTTPError):
     status = '404 Not Found'
 
     def __init__(self, path):
-        super(NotFound, self).__init__(self.message.format(path))
+        super().__init__(message=self.message.format(path))
 
 
 class NoMethod(HTTPError):
     """A `405 Method Not Allowed` error."""
 
+    status = '405 Method Not Allowed'
+
     def __init__(self, app):
-        status = '405 Method Not Allowed'
-        headers = {'Content-Type': 'text/html'}
-        methods = ['GET', 'HEAD', 'POST', 'PUT', 'DELETE']
-        if cls:
-            methods = [method for method in methods if hasattr(cls, method)]
-        headers['Allow'] = ', '.join(methods)
-        super(NoMethod, self).__init__(status, headers)
-        
+        super().__init__()
+        self.headers = {'Content-Type': 'text/html'}
+        methods = HTTP_REQUEST_METHODS
+        if app:
+            methods = [method for method in methods if hasattr(app, method)]
+        self.headers['Allow'] = ', '.join(methods)
+
 
 class NotAcceptable(HTTPError):
     """`406 Not Acceptable` error."""
@@ -169,10 +137,57 @@ class InternalError(HTTPError):
     status = '500 Internal Server Error'
 
 
+class HTTPRedirect(HTTPError):
+    """Abstract redirect.
+
+    Args:
+        url (str):
+        absolute (bool):
+
+    Note:
+        `url` is joined with the base URL so that things like `redirect("about") will work properly.
+
+    """
+
+    def __init__(self, path, url):
+        super().__init__()
+        new_path = urllib2.parse.urlparse.urljoin(path, url)
+        self.headers = {
+            'Content-Type': 'text/html',
+            'Location': new_path
+        }
+
+
+class PermanentRedirect(HTTPRedirect):
+    """A `301 Moved Permanently` redirect."""
+
+    status = '301 Moved Permanently'
+
+
+class Found(HTTPRedirect):
+    """A `302 Found` redirect."""
+
+    status = '302 Found'
+
+
+class SeeOther(HTTPRedirect):
+    """A `303 See Other` redirect."""
+
+    status = '303 See Other'
+
+
+class TempRedirect(HTTPRedirect):
+    """A `307 Temporary Redirect` redirect."""
+
+    status = '307 Temporary Redirect'
+
+
+
+
 CODE_TO_STATS_MAP = {200: OK,
                      201: Created,
                      202: Accepted,
-                     301: Redirect,
+                     301: PermanentRedirect,
                      302: Found,
                      303: SeeOther,
                      304: NotModified,

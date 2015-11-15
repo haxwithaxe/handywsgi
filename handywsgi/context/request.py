@@ -34,6 +34,7 @@ class Request:
             )
 
     def _get_request_parts(self, environment):
+        """ Build up the object model of the incoming data. """
         class Content:
             length = environment.get('CONTENT_LENGTH')
             mime = environment.get('CONTENT_TYPE')
@@ -80,6 +81,7 @@ class Request:
 
 
 class WSGIData:
+    """ A model of the "wsgi.*" fields in the request data. """
 
     def __init__(self, environment):
         self.errors = environment.get('wsgi.errors')  # <_io.TextIOWrapper name='<stderr>' mode='w' encoding='UTF-8'>,
