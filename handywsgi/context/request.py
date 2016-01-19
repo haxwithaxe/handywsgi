@@ -58,6 +58,8 @@ class Request:
                 full_path = '{}?{}'.format(path, param)
             else:
                 full_path = path
+            _params = cgi.FieldStorage(fp=environment['wsgi.input'], environ=environment.copy())
+            params = {p: _params.getvalue(p) for p in _params.keys()}
         self.query = Query()
 
         class Client:
