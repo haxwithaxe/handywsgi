@@ -1,6 +1,6 @@
 
 
-from . import status, templator, HTTP_REQUEST_METHODS
+from handywsgi import status, templator, HTTP_REQUEST_METHODS
 
 
 class Application:
@@ -14,6 +14,10 @@ class Application:
                 )
         self.context = None
         self.content = None
+
+    def add(self, name, value):
+        if not hasattr(self, name):
+            setattr(self, name, value)
 
     def __call__(self, context):
         self.context = context
@@ -33,11 +37,11 @@ class Application:
         content = self.templator.render(template_name, **data)
         return content
 
-    def render(self, template_name=None):
+    def render(self, template_name=None, **data):
         """ Render content and send it immediately. """
         if not template_name:
             template_name = self.config.default_template
-        template = self.templator.get_template(template_name)
+        template = self.templator.load(template_name)
         page = template.render(app=self)
         self.context.response.output.write(page)
 
