@@ -1,21 +1,16 @@
 
-from . import ButtonGroup, Button
+from handywsgi import form
 
 
-class Group(ButtonGroup):
+class Radio(form.Input):
 
-    template = '''
-        <fieldset $fieldset_attributes>
-            <legend $label_attributes>$label</legend>
-            $buttons
-        </fieldset>
-        '''
+    def __init__(self, label, *boolean_attributes, **attributes):
+        super().__init__(form.RADIO, children=label, boolean_attributes=boolean_attributes, attributes=attributes)
 
 
-class Radio(Button):
+class LabeledRadio(form.Label):
 
-    template = '''
-        <label $label_attributes>
-            <input type="radio" name="$name" value="$value" $attributes />
-        </label>
-        '''
+    def __init__(self, label, *boolean_attributes, label_attributes=None, **attributes):
+        super().__init__(label, **(label_attributes or {}))
+        radio = Radio(*boolean_attributes, **attributes)
+        self.wrap(radio)

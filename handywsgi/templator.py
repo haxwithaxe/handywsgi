@@ -2,18 +2,154 @@
 import os
 import tempfile
 
-from genshi.template import TemplateLoader
+from lxml import etree
+from genshi.template import TemplateLoader, MarkupTemplate, Template as BaseTemplate
+from genshi.template.text import TextTemplate
+from genshi import builder, HTML, XML
 
 
+
+
+def create_xml_template(xml):
+    stream = XML(etree.tostring(xml, encoding='utf-8'))
+    return MarkupTemplate(stream)
+
+
+def create_html_template(html):
+    stream = HTML(etree.tostring(html, encoding='utf-8'))
+    return MarkupTemplate(stream)
+
+
+def create_text_template(html):
+    stream = HTML(etree.tostring(html, encoding='utf-8'))
+    return TextTemplate(stream)
+
+
+def _dict_to_attrs(attrib_dict):
+    attrs = []
+    names = set()
+    for name, value in attrib_dict.items():
+        name = name.rstrip('_').replace('_', '-')
+        if value is not None and name not in names:
+            attrs.append((builder.QName(name), str(value)))
+            names.add(name)
+    return builder.Attrs(attrs)
+
+def _attrs_to_dict(attrib):
+    if len(attrib) == 1:
+        return dict((attrib[0],))
+    else:
+        return dict(attrib)
+
+
+class _AttributesAdapter:
+
+    def __contains__(self, key):
+        return key in (x for x, y in self.tag.attrib)
+
+    def __getitem__(self, key):
+        attrib = _attrs_to_dict(self.tag.attrib)
+        if key not in self:
+            raise KeyError()
+        return attrib[key]
+
+    def __setitem__(self, key, value):
+        key = builder.QName(key)
+        attrib = _attrs_to_dict(self.tag.attrib)
+        attrib[key] = value
+        self.tag.attrib = _dict_to_attrs(attrib)
+
+    def __iter__(self):
+        return iter(self.keys())
+
+    def items(self):
+        return _attrs_to_dict(self.tag.attrib).items()
+
+    def values(self):
+        return _attrs_to_dict(self.tag.attrib).values()
+
+    def keys(self):
+        return _attrs_to_dict(self.tag.attrib).keys()
+
+    def update(self, attributes):
+        for key, value in attributes.items():
+            self[key] = value
+    
+    def get(self, key, default=None):
+        if key in self:
+            return self[key]
+        else:
+            return default
+
+
+class Tag(_AttributesAdapter):
+
+    def __init__(self, tag, children=None, attributes=None):
+        self.tag = getattr(builder.tag, tag)()
+        if children and isinstance(children, (list, tuple)):
+            for child in children:
+                norm = self._normalize_child(child)
+                if norm:
+                    self.tag.children.append(norm)
+        if attributes:
+            if not isinstance(attributes, dict):
+                raise TypeError()
+            self.update(attributes)
+
+    def _normalize_child(self, child):
+        if hasattr(child, '__xml__'):
+            return child.__xml__
+        elif isinstance(child, str):
+            return child
+        elif isinstance(child, (int, float)):
+            return str(child)
+        elif isinstance(child, bool):
+            return str(child).lower()
+
+    def append(self, child):
+        norm = self._normalize_child(child)
+        self.tag.children.append(norm)
+
+    def extend(self, children):
+        for child in children:
+            self.append(children)
+
+    @property
+    def children(self):
+        return self.tag.children
+
+    @property
+    def attributes(self):
+        return self.items()
+
+    @property
+    def __xml__(self):
+        return self.tag
+
+    
 class TemplatingMixin:
     
-    template = None
-    tempfile_path = '/tmp/'
-
     def __str__(self):
-        template = Templator(self.tempfile_path, autoreload=False).loads(self.tempalte)
-        return template.render(**self.__dict__)
+        if isinstance(self.template, BaseTemplate):
+            return self.template.generate(**self.__dict__).render()
+        else:
+            template = Templator().loads(self.tempalte)
+            return template.generate(**self.__dict__).render()
 
+
+class XMLSubTemplate:
+
+    def __init__(self, tag, children=None, attributes=None):
+        if isinstance(children, str):
+            children = [children]
+        elif isinstance(children, (list, tuple)):
+            # Strip out falsey values
+            children = [x for x in children if x]
+        self._tag = Tag(tag, attributes=attributes, children=children)
+
+    @property
+    def __xml__(self):
+        return self._tag.tag
 
 class Template:
     """ A simplified reusable template interface.
@@ -40,8 +176,10 @@ class Template:
             str: Return a rendered template.
 
         """
-        return self._template.generate(**kwargs).render(self._render_type,
-                                                       doctype=self._doctype)
+        return self._template.generate(**kwargs).render(
+                self._render_type,
+                doctype=self._doctype
+                )
 
 
 class Templator:
@@ -57,7 +195,7 @@ class Templator:
 
     def __init__(self, base_path='templates', file_extension='html', auto_reload=True):
         self._base_path = base_path
-        self._loader = TemplateLoader(self.base_path, auto_reload=auto_reload)
+        self._loader = TemplateLoader(self._base_path, auto_reload=auto_reload)
         self._file_extension = file_extension
 
     def load(self, name, file_extension=None):
@@ -73,11 +211,13 @@ class Templator:
                         )
                 )
 
-    def loads(self, template_string):
-        file_obj, path = tempfile.mkstemp(suffix=self._file_extension, prefix=self._base_path)
-        with file_obj as template_file:
-            os.write(template_file, template_string.encode('utf-8'))
-        return self.load(path)
+    def loads(self, template_string, file_type='xml'):
+        factory = {
+                'xml': create_xml_template,
+                'html': create_html_template,
+                'text': create_text_template
+                }[file_type]
+        return factory(template_string)
 
     def render(self, name, **kwargs):
         """ Shortcut for rendering a template.
