@@ -29,8 +29,8 @@ class DebugApp(Application):
 
 class config:
     default_template = 'demo'
-    template_path = './'
-    template_extension = '.html'
+    template_path = './examples'
+    template_extension = 'html'
 
 
 httpd = wsgiref.simple_server.make_server('', 8000, Adapter({'debug': DebugApp(config())}))
