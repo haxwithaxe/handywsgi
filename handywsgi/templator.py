@@ -44,6 +44,9 @@ def _attrs_to_dict(attrib):
 
 class _AttributesAdapter:
 
+    def __init__(self, tag):
+        self.tag = tag
+
     def __contains__(self, key):
         return key in (x for x, y in self.tag.attrib)
 
@@ -61,6 +64,12 @@ class _AttributesAdapter:
 
     def __iter__(self):
         return iter(self.keys())
+
+    def __len__(self):
+        return len(self.keys())
+
+    def set(self, other):
+        self.tag.attrib = _dict_to_attrs(other)
 
     def items(self):
         return _attrs_to_dict(self.tag.attrib).items()
@@ -81,20 +90,14 @@ class _AttributesAdapter:
         else:
             return default
 
+    def __str__(self):
+        return str(_attrs_to_dict(self.tag.attrib))
 
-class Tag(_AttributesAdapter):
 
-    def __init__(self, tag, children=None, attributes=None):
-        self.tag = getattr(builder.tag, tag)()
-        if children and isinstance(children, (list, tuple)):
-            for child in children:
-                norm = self._normalize_child(child)
-                if norm:
-                    self.tag.children.append(norm)
-        if attributes:
-            if not isinstance(attributes, dict):
-                raise TypeError()
-            self.update(attributes)
+class _ChildrenAdapter:
+
+    def __init__(self, tag):
+        self.tag = tag
 
     def _normalize_child(self, child):
         if hasattr(child, '__xml__'):
@@ -106,25 +109,85 @@ class Tag(_AttributesAdapter):
         elif isinstance(child, bool):
             return str(child).lower()
 
+    def set(self, other):
+        self.tag.children = other
+
     def append(self, child):
-        norm = self._normalize_child(child)
-        self.tag.children.append(norm)
+        if child is not None:
+            norm = self._normalize_child(child)
+            self.tag.children.append(norm)
 
     def extend(self, children):
         for child in children:
-            self.append(children)
+            self.append(child)
 
-    @property
-    def children(self):
-        return self.tag.children
+    def insert(self, index, child):
+        self.tag.children.insert(index, child)
+
+    def __contains__(self, key):
+        return key in self.tag.children
+
+    def __setitem__(self, index, child):
+        if child is not None:
+            self.tag.children[index] = self._normalize_child(child)
+
+    def __getitem__(self, index):
+        return self.tag.children[index]
+
+    def __len__(self):
+        return len(self.tag.children)
+
+    def __str__(self):
+        return str(self.tag.children)
+
+
+class Tag:
+
+    def __init__(self, tag, children=None, attributes=None):
+        self.tag = getattr(builder.tag, tag)()
+        self._children = _ChildrenAdapter(self.tag)
+        self._attributes = _AttributesAdapter(self.tag)
+        if children:
+            if isinstance(children, (list, tuple)):
+                self.children.extend(children)
+            else:
+                self.children.append(children)
+        if attributes:
+            if not isinstance(attributes, dict):
+                raise TypeError()
+            self.attributes.update(attributes)
 
     @property
     def attributes(self):
-        return self.items()
+        return self._attributes
+
+    @attributes.setter
+    def attributes(self, other):
+        self._attributes.set(other)
+
+    @property
+    def children(self):
+        return self._children
+
+    @children.setter
+    def children(self, other):
+        self._children.set(other)
 
     @property
     def __xml__(self):
+        print('Tag', self.tag)
         return self.tag
+
+
+class XMLSubTemplate(Tag):
+
+    def __init__(self, tag, children=None, attributes=None):
+        if isinstance(children, str):
+            children = [children]
+        elif isinstance(children, (list, tuple)):
+            # Strip out falsey values
+            children = [x for x in children if x]
+        super().__init__(tag, attributes=attributes, children=children)
 
     
 class TemplatingMixin:
@@ -136,20 +199,6 @@ class TemplatingMixin:
             template = Templator().loads(self.tempalte)
             return template.generate(**self.__dict__).render()
 
-
-class XMLSubTemplate:
-
-    def __init__(self, tag, children=None, attributes=None):
-        if isinstance(children, str):
-            children = [children]
-        elif isinstance(children, (list, tuple)):
-            # Strip out falsey values
-            children = [x for x in children if x]
-        self._tag = Tag(tag, attributes=attributes, children=children)
-
-    @property
-    def __xml__(self):
-        return self._tag.tag
 
 class Template:
     """ A simplified reusable template interface.

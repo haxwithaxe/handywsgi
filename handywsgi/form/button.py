@@ -2,13 +2,16 @@
 from handywsgi import form
 
 
+class Button(form.Button):
+
+    hardcoded_attributes = {'type': form.BUTTON}
+
+
 class Submit(form.Button):
 
-    def __init__(self, title, *boolean_attributes, **attributes):
-        super().__init__(title, *boolean_attributes, type_=form.SUBMIT, **attributes)
+    hardcoded_attributes = {'type': form.SUBMIT}
 
 
 class Reset(form.Button):
 
-    def __init__(self, title, *boolean_attributes, **attributes):
-        super().__init__(form.RESET, title, boolean_attributes=boolean_attributes, attributes=attributes)
+    hardcoded_attributes = {'type': form.RESET}

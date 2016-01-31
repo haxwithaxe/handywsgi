@@ -2,7 +2,8 @@
 
 from handywsgi import form
 
-class TextArea(form.FormElement, form.BooleanAttributesMixin):
+
+class TextArea(form.SimpleTag):
     """
 
     <!ELEMENT TEXTAREA - - (#PCDATA)       -- multi-line text field -->
@@ -19,26 +20,9 @@ class TextArea(form.FormElement, form.BooleanAttributesMixin):
 
     """
 
-    def __init__(self, default_text, *boolean_attributes, **attributes):
-        super().__init__(
-                form.TEXTAREA,
-                children=default_text,
-                boolean_attributes=boolean_attributes,
-                attributes=attributes)
-        self.validate_type(form.ROWS, int)
-        self.validate_type(form.COLS, int)
+    tag_string = form.TEXTAREA
 
 
-class LabeledTextArea(form.Label):
+class LabeledTextArea(form.SimpleLabeledTag):
 
-    def __init__(
-            self,
-            label,
-            default_text,
-            *boolean_attributes,
-            label_attributes={},
-            **attributes
-            ):
-        super().__init__(label, **label_attributes)
-        textarea = TextArea(default_text, *boolean_attributes, **attributes)
-        self.wrap(textarea)
+    tag_string = form.TEXTAREA

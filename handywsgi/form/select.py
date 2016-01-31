@@ -2,7 +2,7 @@
 from handywsgi import form
 
 
-class Select(form.FormElement, form.BooleanAttributesMixin):
+class Select(form.FormElement):
     """
 
     <!ELEMENT SELECT - - (OPTGROUP|OPTION)+ -- option selector -->
@@ -21,14 +21,14 @@ class Select(form.FormElement, form.BooleanAttributesMixin):
 
     """
 
-    def __init__(self, options, *boolean_attributes, **attributes):
+    def __init__(self, options, flags=None, attributes=attributes, **kwargs):
         for index, option in enumerate(options):
             if isinstance(option, dict):
                 options[index] = Option(**option)
-        super().__init__(form.SELECT, options, *boolean_attributes, **attributes)
+        super().__init__(form.SELECT, options, flags=flags, attributes=attributes, **kwargs)
 
 
-class Option(form.FormElement, form.BooleanAttributesMixin):
+class Option(form.SimpleTag):
     """
 
     <!ELEMENT OPTION - O (#PCDATA)         -- selectable choice -->
@@ -42,7 +42,4 @@ class Option(form.FormElement, form.BooleanAttributesMixin):
 
     """
 
-    def __init__(self, label=None, value=None, selected=False, disabled=False):
-        super().__init__(form.OPTION, children=label, attributes={form.VALUE: value})
-        self.selected = selected
-        self.disabled = disabled
+    tag_string = form.OPTION
