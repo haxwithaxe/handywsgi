@@ -3,27 +3,26 @@
 import wsgiref.simple_server
 
 from handywsgi import form
-from handywsgi.form import textbox, email, textarea, button
+from handywsgi.form import textbox, textarea, button
 from handywsgi.adapter import Adapter
 from handywsgi.application import Application
 
 
-
 def feedback_form(context):
-    myform = form.Form(None, action=context.request.query.path, method=form.POST)
+    myform = form.Form(action=context.request.query.path, method=form.POST)
     username = textbox.LabeledTextbox(
             'Your name',
-            None,
-            name='username'
+            name='username',
+            label_name='username-label'
             )
-    address = email.LabeledEmail(
+    address = textbox.LabeledTextbox(
             'Your email address',
-            None,
-            name='email-address'
+            name='email-address',
+            label_name='email-label'
             )
-    myform.append(form.P(elements=[username, address]))
-    myform.append(form.P(elements=[textarea.TextArea(None, name='feedback')]))
-    myform.append(form.P(elements=[button.Submit('Hello button!', name=form.SUBMIT)]))
+    myform.append(form.Div(children=[username, address]))
+    myform.append(form.Div(children=textarea.TextArea(name='feedback')))
+    myform.append(form.Div(children=button.Submit(value='Hello button!', name=form.SUBMIT)))
     return myform.__xml__
 
 
