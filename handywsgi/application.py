@@ -6,12 +6,16 @@ from handywsgi import status, templator, HTTP_REQUEST_METHODS
 class Application:
     """ Application class for use with adapter.Adapter. """
 
-    def __init__(self, config):
+    def __init__(self, config=None, use_template=True):
         self.config = config
-        self.templator = templator.Templator(
-                self.config.template_path,
-                self.config.template_extension or 'html'
-                )
+        self.use_template = use_template
+        if self.use_template:
+            self.templator = templator.Templator(
+                    self.config.template_path,
+                    self.config.template_extension or 'html'
+                    )
+        else:
+            self.templator = None
         self.context = None
         self.content = None
 
@@ -26,7 +30,10 @@ class Application:
             content = getattr(self, method)(self.context)
             if content:
                 self.content = content
-            self.render(self.config.default_template)
+            if self.use_template:
+                self.render(self.config.default_template)
+            else:
+                self.dump(self.content)
         else:
             raise status.NoMethod(self)
 
@@ -43,9 +50,11 @@ class Application:
             template_name = self.config.default_template
         template = self.templator.load(template_name)
         page = template.render(app=self)
-        self.context.response.output.write(page)
+        self.dump(page)
 
     def dump(self, data):
         """ Dump data directly to the output buffer """
+        if not isinstance(data, (str, bytes, bytearray)):
+            data = str(data)
         self.context.response.output.write(data)
 
