@@ -154,3 +154,13 @@ def make_content_type(major, minor, encoding=None):
     return headers.Header('Content-Type', mime+charset)
 
 HTML_UTF8 = make_content_type(TEXT, HTML, UTF8)
+
+
+def parse_content_type(content_type):
+    if not content_type:
+        return
+    fields = content_type.split(';')
+    fields.pop(0)
+    for key, value in dict(field.split('=', 1) for field in fields if '=' in field).items():
+        if key.strip().lower() == 'charset':
+            return value.strip().lower()
